@@ -29,7 +29,7 @@ case "$1" in
     cp "$(dirname $0)/redis.conf" "$REDIS_ROOT/redis.conf"
     sed -i.bak s/redispasshere/$PASSWORD/g "$REDIS_ROOT/redis.conf"
     dokku_log_info1 "Creating database for $APP"
-    docker run -d --name "$REDIS_CONTAINER_NAME" -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" /etc/redis/redis.conf > /dev/null
+    docker run -d --name "$REDIS_CONTAINER_NAME" -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null
     load_ip_and_container
     set_env_for "$APP"
     echo $PRIVATE_IP > "$REDIS_ROOT/ip"
@@ -69,7 +69,7 @@ case "$1" in
         exit 0
     fi
     dokku_log_info1 "Starting redis server"
-    docker run -d --name "$REDIS_CONTAINER_NAME" -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" /etc/redis/redis.conf > /dev/null
+    docker run -d --name "$REDIS_CONTAINER_NAME" -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null
     load_ip_and_container
     set_env_for "$APP"
     dokku_log_info2 "Restarting application: $APP"
