@@ -1,15 +1,15 @@
-# dokku-psql-single-container
+# dokku-redis
 
-dokku-psql-single-container is a plugin for [dokku][dokku] that provides a Postgresql server in a single container for your applications.
+dokku-redis is a plugin for [dokku][dokku] that provides redis servers for your applications.
 
-It uses the official Postgresql docker image (version 9.3).
+It uses the official Redis docker image (version 3.0).
 
-This version is compatible with dokku 0.3.16.
+This version is compatible with dokku 0.3.17.
 
 ## Installation
 
 ```
-git clone https://github.com/Flink/dokku-psql-single-container /var/lib/dokku/plugins/psql-sc
+git clone https://github.com/krisrang/dokku-redis /var/lib/dokku/plugins/rediskr
 dokku plugins-install
 ```
 
@@ -17,76 +17,72 @@ dokku plugins-install
 ## Commands
 ```
 $ dokku help
-    psql:admin_console                              Launch a postgresql console as admin user
-    psql:console     <app>                          Launch a postgresql console for <app>
-    psql:create      <app>                          Create a Postgresql database for <app>
-    psql:delete      <app>                          Delete Postgresql database for <app>
-    psql:dump        <app> > <filename.dump>        Dump <app> database to PG dump format
-    psql:list                                       List all databases
-    psql:restart                                    Restart the Postgresql docker container
-    psql:restore     <app> < <filename.*>           Restore database to <app> from any format exported by pg_dump
-    psql:start                                      Start the Postgresql docker container if it isn't running
-    psql:status                                     Shows status of Postgresql
-    psql:stop                                       Stop the Postgresql docker container
-    psql:url         <app>                          Get DATABASE_URL for <app>
+    redis:console     <app>                          Launch a redis cli for <app>
+    redis:create      <app>                          Create a redis database for <app>
+    redis:delete      <app>                          Delete redis database for <app>
+    redis:dump        <app> > <filename.rdb>         Dump <app> database to rdb file
+    redis:list                                       List all databases
+    redis:restart     <app>                          Restart the redis docker container for <app>
+    redis:restore     <app> < <filename.rdb>         Restore database to <app> from rdb file
+    redis:start       <app>                          Start the redis docker container if it isn't running for <app>
+    redis:status      <app>                          Shows status of redis for <app>
+    redis:stop        <app>                          Stop the redis docker container for <app>
+    redis:url         <app>                          Get REDIS_URL for <app>
 ```
 
 ## Info
 This plugin adds the following environment variables to your app automatically (they are available via `dokku config`):
 
-* DATABASE\_URL
-* DB\_HOST
-* DB\_NAME
-* DB\_PASS
-* DB\_PORT
-* DB\_TYPE
-* DB\_USER
-* POSTGRESQL\_URL
+* REDIS\_URL
+* REDIS\_HOST
+* REDIS\_NAME
+* REDIS\_PASS
+* REDIS\_PORT
 
 ## Usage
 
-### Start PostgreSQL:
+### Start redis:
 ```
-$ dokku psql:start                 # Server side
-$ ssh dokku@server psql:start      # Client side
-```
-
-### Stop PostgreSQL:
-```
-$ dokku psql:stop                  # Server side
-$ ssh dokku@server psql:stop       # Client side
+$ dokku redis:start <app>               # Server side
+$ ssh dokku@server redis:start <app>    # Client side
 ```
 
-### Restart PostgreSQL:
+### Stop redis:
 ```
-$ dokku psql:restart               # Server side
-$ ssh dokku@server psql:restart    # Client side
+$ dokku redis:stop <app>                # Server side
+$ ssh dokku@server redis:stop <app>     # Client side
+```
+
+### Restart redis:
+```
+$ dokku redis:restart <app>             # Server side
+$ ssh dokku@server redis:restart <app>  # Client side
 ```
 
 ### Create a new database for an existing app:
 ```
-$ dokku psql:create foo            # Server side
-$ ssh dokku@server psql:create foo # Client side
+$ dokku redis:create <app>              # Server side
+$ ssh dokku@server redis:create <app>   # Client side
 ```
 
 ### Dump database:
 ```
-$ dokku psql:dump foo > filename.dump # Server side
+$ dokku redis:dump <app> > filename.rdb # Server side
 ```
 
 ### Restore database from dump:
 ```
-$ dokku psql:restore foo < filename.dump # Server side
+$ dokku redis:restore <app> < filename.rdb # Server side
 ```
 
 ### Copy database foo to database bar using pipe:
 ```
-$ dokku psql:dump foo | dokku psql:restore bar # Server side
+$ dokku redis:dump <app> | dokku redis:restore <app> # Server side
 ```
 
 ## Acknowledgements
 
-This plugin is based originally on the [one by Olivier Hardy](https://github.com/ohardy/dokku-psql).
+This plugin is based originally on the [dokku-psql-single-container](https://github.com/Flink/dokku-psql-single-container).
 
 ## License
 

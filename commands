@@ -4,118 +4,116 @@ source "$(dirname $0)/../common/functions"
 source "$(dirname $0)/functions"
 set +e
 
-if [[ $1 == psql:* ]]; then
+if [[ $1 == redis:* ]]; then
   load_ip_and_container
 fi
 
 case "$1" in
-  psql:admin_console)
-    check_container
-    docker exec -it "$PSQL_CONTAINER_NAME" env TERM=$TERM su - postgres -c psql
+  redis:console)
+    check_app; verify_app_name "$APP"; check_exists
+    PASSWORD=$(cat "$REDIS_ROOT/pass")
+    docker exec -it "$REDIS_CONTAINER_NAME" env TERM="$TERM" redis-cli -a "$PASSWORD"
     ;;
 
-  psql:console)
-    check_container; check_app; verify_app_name "$APP"; check_exists
-    DATABASE=$(cat "$PSQL_ROOT/db_$APP")
-    PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
-    docker exec -it "$PSQL_CONTAINER_NAME" env TERM="$TERM" PGPASSWORD="$PASSWORD" psql -h localhost -U "$DATABASE" "$DATABASE"
-    ;;
-
-  psql:url)
+  redis:url)
     check_container; check_app; verify_app_name "$APP"; check_exists
     db_url "$APP"
     ;;
 
-  psql:create)
-    check_container; check_app; verify_app_name "$APP"; check_already_exists
-    PASSWORD=$(openssl rand -hex 32)
-    DATABASE=$(database_name "$APP")
-    echo $DATABASE > "$PSQL_ROOT/db_$APP"
-    echo $PASSWORD > "$PSQL_ROOT/pass_$APP"
-    chmod 600 "$PSQL_ROOT/db_$APP" "$PSQL_ROOT/pass_$APP"
-    dokku_log_info1 "Creating database $APP"
-    docker exec "$PSQL_CONTAINER_NAME" su - postgres -c "psql --command \"CREATE USER $DATABASE WITH PASSWORD '$PASSWORD';\";\
-      createdb -E utf8 -O $DATABASE $DATABASE;\
-      psql --command \"GRANT ALL PRIVILEGES ON DATABASE $DATABASE TO $DATABASE;\"" > /dev/null
+  redis:create)
+    check_app; verify_app_name "$APP"; check_already_exists
+    PASSWORD=$(openssl rand -hex 32)    
+    mkdir -p "$REDIS_ROOT"
+    chown dokku:dokku "$REDIS_ROOT/pass"
+    echo $PASSWORD > "$REDIS_ROOT/pass"
+    chmod 600 "$REDIS_ROOT/pass"
+    dokku_log_info1 "Creating database for $APP"
+    docker run -d --name "$REDIS_CONTAINER_NAME" "$REDIS_IMAGE" > /dev/null
+    load_ip_and_container
     set_env_for "$APP"
     ;;
 
-  psql:delete)
-    check_container; check_app; check_exists
-    DATABASE=$(cat "$PSQL_ROOT/db_$APP")
-    dokku_log_info1 "Deleting database $APP"
-    docker exec "$PSQL_CONTAINER_NAME" su - postgres -c "dropdb $DATABASE; dropuser $DATABASE" > /dev/null
-    rm -f "$PSQL_ROOT/db_$APP" "$PSQL_ROOT/pass_$APP"
+  redis:delete)
+    check_app; verify_app_name "$APP"; check_exists
+    dokku_log_info1 "Deleting database for $APP"
+    docker stop "$REDIS_CONTAINER_NAME" > /dev/null
+    docker rm -f "$REDIS_CONTAINER_NAME" > /dev/null
+    rm -fr "$REDIS_ROOT"
     if [[ -d "$DOKKU_ROOT/$APP" ]]; then
       dokku_log_info1 "Unsetting config vars for $APP"
-      dokku config:unset-norestart "$APP" DATABASE_URL POSTGRESQL_URL DB_TYPE DB_HOST DB_PORT DB_NAME DB_USER DB_PASS &> /dev/null
+      dokku config:unset-norestart "$APP" REDIS_URL REDIS_HOST REDIS_PORT REDIS_NAME REDIS_PASS &> /dev/null
     fi
     ;;
 
-  psql:list)
-    check_container
-    docker exec -it "$PSQL_CONTAINER_NAME" env TERM=$TERM su - postgres -c "psql --command \"\\l\""
+  redis:list)
+    dokku_col_log_info2_quiet "App Name" "Container id"
+    for DOCKER_ID in $(docker ps | grep dokku-rediskr | awk '{print $1}'); do
+      APP_NAME=$(docker ps | grep "$DOCKER_ID")
+      dokku_col_log_msg "$APP_NAME" "$DOCKER_ID"
+    done
     ;;
 
-  psql:start)
-    if [[ -n "$PSQL_ID" ]]; then
-      echo "Postgresql container already running with ID: $PSQL_ID"
+  redis:start)
+    if [[ -n "$REDIS_ID" ]]; then
+      echo "Redis container already running with ID: $REDIS_ID"
       exit 1
     fi
-    OLD_ID=$(docker ps -f status=exited | grep "$PSQL_CONTAINER_NAME" | awk '{print $1}')
+    OLD_ID=$(docker ps -f status=exited | grep "$REDIS_CONTAINER_NAME" | awk '{print $1}')
     if [[ -n $OLD_ID ]]; then
-        OLD_ID=$(docker rm $OLD_ID)
-        dokku_log_info1 "Removed stale Postgresql container $OLD_ID"
+        OLD_ID=$(docker start $OLD_ID)
+        dokku_log_info1 "Starting existing redis container $OLD_ID"
+        exit 0
     fi
-    dokku_log_info1 "Starting Postgresql server"
-    docker run -d -v $PSQL_ROOT/data:/var/lib/postgresql/data --name "$PSQL_CONTAINER_NAME" "$PSQL_IMAGE" > /dev/null
-    restart_apps
+    dokku_log_info1 "Starting redis server"
+    docker run -d --name "$REDIS_CONTAINER_NAME" "$REDIS_IMAGE" > /dev/null
+    set_env_for "$APP"
+    dokku_log_info2 "Restarting application: $APP"
+    dokku ps:restart "$APP"
     ;;
 
-  psql:restart)
-    dokku psql:stop
-    dokku psql:start
+  redis:restart)
+    dokku redis:stop
+    dokku redis:start
     ;;
 
-  psql:stop)
+  redis:stop)
     check_container
-    dokku_log_info1 "Stopping Postgresql server"
-    docker stop "$PSQL_CONTAINER_NAME" > /dev/null
+    dokku_log_info1 "Stopping redis server"
+    docker stop "$REDIS_CONTAINER_NAME" > /dev/null
     ;;
 
-  psql:dump)
+  redis:dump)
     check_container; check_app; verify_app_name "$APP"; check_exists
     DATABASE=$(cat "$PSQL_ROOT/db_$APP")
     PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
     docker exec -i "$PSQL_CONTAINER_NAME" env PGPASSWORD="$PASSWORD" pg_dump -Fc --no-acl --no-owner -h localhost -U "$DATABASE" -w "$DATABASE"
     ;;
 
-  psql:restore)
+  redis:restore)
     check_container; check_app; verify_app_name "$APP"; check_exists
     DATABASE=$(cat "$PSQL_ROOT/db_$APP")
     PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
     cat - | docker exec -i "$PSQL_CONTAINER_NAME" env PGPASSWORD="$PASSWORD" pg_restore -h localhost -cO -d "$DATABASE" -U "$DATABASE" -w
     ;;
 
-  psql:status)
-    [[ -n "$PSQL_ID" ]] && echo "Postgresql container running with ID: $PSQL_ID" && exit 0
-    echo "Postgresql container not running"
+  redis:status)
+    [[ -n "$REDIS_ID" ]] && echo "Redis container running with ID: $REDIS_ID" && exit 0
+    echo "Redis container not running"
     ;;
 
   help)
     cat && cat<<EOF
-    psql:console     <app>                          Launch a postgresql console for <app>
-    psql:url         <app>                          Get DATABASE_URL for <app>
-    psql:create      <app>                          Create a Postgresql database for <app>
-    psql:delete      <app>                          Delete Postgresql database for <app>
-    psql:dump        <app> > <filename.dump>        Dump <app> database to PG dump format
-    psql:restore     <app> < <filename.*>           Restore database to <app> from any format exported by pg_dump
-    psql:admin_console                              Launch a postgresql console as admin user
-    psql:restart                                    Restart the Postgresql docker container
-    psql:start                                      Start the Postgresql docker container if it isn't running
-    psql:stop                                       Stop the Postgresql docker container
-    psql:status                                     Shows status of Postgresql
-    psql:list                                       List all databases
+    redis:console     <app>                          Launch a redis cli for <app>
+    redis:create      <app>                          Create a redis database for <app>
+    redis:delete      <app>                          Delete redis database for <app>
+    redis:dump        <app> > <filename.rdb>         Dump <app> database to rdb file
+    redis:list                                       List all databases
+    redis:restart     <app>                          Restart the redis docker container for <app>
+    redis:restore     <app> < <filename.rdb>         Restore database to <app> from rdb file
+    redis:start       <app>                          Start the redis docker container if it isn't running for <app>
+    redis:status      <app>                          Shows status of redis for <app>
+    redis:stop        <app>                          Stop the redis docker container for <app>
+    redis:url         <app>                          Get REDIS_URL for <app>
 EOF
     ;;
 esac

@@ -2,16 +2,16 @@
 set -eo pipefail; [[ $DOKKU_TRACE  ]] && set -x
 
 APP="$2"
-PSQL_ROOT="$DOKKU_ROOT/.psql-sc"
-PSQL_IMAGE="postgres:9.3"
-PSQL_CONTAINER_NAME="psql-single-container"
+REDIS_ROOT="$DOKKU_ROOT/$APP/rediskr"
+REDIS_IMAGE="redis:9.3"
+REDIS_CONTAINER_NAME="dokku-rediskr-$APP"
 
 check_already_exists() {
-  [[ -f "$PSQL_ROOT/db_$APP" ]] && echo "Database for $APP already exists" && exit 1
+  [[ -f "$REDIS_ROOT" ]] && echo "Database for $APP already exists" && exit 1
 }
 
 check_exists() {
-  [[ ! -f "$PSQL_ROOT/db_$APP" ]] && echo "No database configured for $APP" && exit 1
+  [[ ! -f "$REDIS_ROOT" ]] && echo "No database configured for $APP" && exit 1
 }
 
 check_app() {
@@ -19,22 +19,21 @@ check_app() {
 }
 
 check_container() {
-  [[ -z "$PSQL_ID" ]] && echo "Postgresql container not started. Start with dokku psql:start" && exit 1
+  [[ -z "$REDIS_ID" ]] && echo "Redis container not started. Start with dokku redis:start $APP" && exit 1
 }
 
 load_ip_and_container() {
-  PSQL_ID=$(docker ps -f status=running | grep "$PSQL_CONTAINER_NAME" | awk '{print $1}') || true
-  if [[ -n "$PSQL_ID" ]]; then
-    PRIVATE_IP=$(docker inspect "$PSQL_ID" | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
-    PORT=5432
+  REDIS_ID=$(docker ps -f status=running | grep "$REDIS_CONTAINER_NAME" | awk '{print $1}') || true
+  if [[ -n "$REDIS_ID" ]]; then
+    PRIVATE_IP=$(docker inspect "$REDIS_ID" | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
+    PORT=6379
   fi
 }
 
 db_url() {
   local APP="$1"
-  local DATABASE=$(cat "$PSQL_ROOT/db_$APP")
-  local PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
-  echo "postgresql://${DATABASE}:${PASSWORD}@${PRIVATE_IP}:${PORT}/${DATABASE}"
+  local PASSWORD=$(cat "$DOKKU_ROOT/pass")
+  echo "redis://redis:${PASSWORD}@${PRIVATE_IP}:${PORT}/0"
 }
 
 database_name() {
@@ -43,20 +42,21 @@ database_name() {
 
 env_for() {
   local APP="$1"
-  if [[ -f "$PSQL_ROOT/db_$APP" ]] && [[ -f "$PSQL_ROOT/pass_$APP" ]]; then
+  if [[ -f "$DOKKU_ROOT/pass" ]]; then
     local URL=$(db_url "$APP")
-    local DATABASE=$(cat "$PSQL_ROOT/db_$APP")
-    local PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
-    echo "DATABASE_URL=$URL POSTGRESQL_URL=$URL DB_TYPE=postgresql DB_HOST=$PRIVATE_IP DB_PORT=$PORT DB_NAME=$DATABASE DB_USER=$DATABASE DB_PASS=$PASSWORD"
+    local PASSWORD=$(cat "$DOKKU_ROOT/pass")
+    echo "REDIS_URL=$URL REDIS_HOST=$PRIVATE_IP REDIS_PORT=$PORT REDIS_NAME=0 REDIS_PASS=$PASSWORD"
   fi
 }
 
 restart_apps() {
   load_ip_and_container
-  for APP_NAME in $(find "$PSQL_ROOT/"* -maxdepth 0 -name 'db*' -printf '%f\n' | sed 's/.*db_//'); do
-    set_env_for "$APP_NAME"
-    dokku_log_info2 "Restarting application: $APP_NAME"
-    dokku ps:restart "$APP_NAME"
+  for APP_NAME in $(DOKKU_QUIET_OUTPUT=true dokku apps); do
+    if [[ -f "$DOKKU_ROOT/$APP_NAME/rediskr/pass" ]]; then
+      set_env_for "$APP_NAME"
+      dokku_log_info2 "Restarting application: $APP_NAME"
+      dokku ps:restart "$APP_NAME"
+    fi
   done
 }
 

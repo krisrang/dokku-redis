@@ -2,8 +2,6 @@
 set -eo pipefail; [[ $DOKKU_TRACE  ]] && set -x
 source "$(dirname $0)/functions"
 
-[[ -d "$PSQL_ROOT" ]] && exit 0
-mkdir -p "$PSQL_ROOT/data"
-chown dokku:dokku -R "$PSQL_ROOT" &> /dev/null || true
-PASSWORD=$(openssl rand -hex 32)
-docker run -v "$PSQL_ROOT/data":/var/lib/postgresql/data -d -e POSTGRES_PASSWORD=$PASSWORD --name "$PSQL_CONTAINER_NAME" "$PSQL_IMAGE"
+[[ -d "$REDIS_ROOT" ]] && exit 0
+
+docker pull $REDIS_IMAGE
