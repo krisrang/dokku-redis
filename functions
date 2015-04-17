@@ -7,19 +7,15 @@ REDIS_IMAGE="redis:3.0"
 REDIS_CONTAINER_NAME="dokku-rediskr-$APP"
 
 check_already_exists() {
-  [[ -f "$REDIS_ROOT" ]] && echo "Database for $APP already exists" && exit 1
+  [[ -d "$REDIS_ROOT" ]] && echo "Database for $APP already exists" && exit 1
 }
 
 check_exists() {
-  [[ ! -f "$REDIS_ROOT" ]] && echo "No database configured for $APP" && exit 1
+  [[ ! -d "$REDIS_ROOT" ]] && echo "No database configured for $APP" && exit 1
 }
 
 check_app() {
   [[ -z "$APP" ]] && echo "Please specify an app to run the command on" && exit 1
-}
-
-check_container() {
-  [[ -z "$REDIS_ID" ]] && echo "Redis container not started. Start with dokku redis:start $APP" && exit 1
 }
 
 load_ip_and_container() {

@@ -16,20 +16,23 @@ case "$1" in
     ;;
 
   redis:url)
-    check_container; check_app; verify_app_name "$APP"; check_exists
+    check_app; verify_app_name "$APP"; check_exists
     db_url "$APP"
     ;;
 
   redis:create)
     check_app; verify_app_name "$APP"; check_already_exists
     PASSWORD=$(openssl rand -hex 32)    
-    mkdir -p "$REDIS_ROOT"
+    mkdir -p "$REDIS_ROOT/data"
     echo $PASSWORD > "$REDIS_ROOT/pass"
     chmod 600 "$REDIS_ROOT/pass"
+    cp "$(dirname $0)/redis.conf" "$REDIS_ROOT/redis.conf"
+    sed -i.bak s/redispasshere/$PASSWORD/g "$REDIS_ROOT/redis.conf"
     dokku_log_info1 "Creating database for $APP"
-    docker run -d --name "$REDIS_CONTAINER_NAME" "$REDIS_IMAGE" > /dev/null
+    docker run -d --name "$REDIS_CONTAINER_NAME" -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" /etc/redis/redis.conf > /dev/null
     load_ip_and_container
     set_env_for "$APP"
+    echo $PRIVATE_IP > "$REDIS_ROOT/ip"
     ;;
 
   redis:delete)
@@ -46,9 +49,11 @@ case "$1" in
 
   redis:list)
     dokku_col_log_info2_quiet "App Name" "Container id"
-    for DOCKER_ID in $(docker ps | grep dokku-rediskr | awk '{print $1}'); do
-      APP_NAME=$(docker ps | grep "$DOCKER_ID")
-      dokku_col_log_msg "$APP_NAME" "$DOCKER_ID"
+    for APP_NAME in $(DOKKU_QUIET_OUTPUT=true dokku apps); do
+      if [[ -f "$DOKKU_ROOT/$APP_NAME/rediskr/pass" ]]; then
+        DOCKER_ID=$(docker ps | grep dokku-rediskr-$APP_NAME | awk '{print $1}')
+        dokku_col_log_msg "$APP_NAME" "$DOCKER_ID"
+      fi
     done
     ;;
 
@@ -64,35 +69,34 @@ case "$1" in
         exit 0
     fi
     dokku_log_info1 "Starting redis server"
-    docker run -d --name "$REDIS_CONTAINER_NAME" "$REDIS_IMAGE" > /dev/null
+    docker run -d --name "$REDIS_CONTAINER_NAME" -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" /etc/redis/redis.conf > /dev/null
+    load_ip_and_container
     set_env_for "$APP"
     dokku_log_info2 "Restarting application: $APP"
     dokku ps:restart "$APP"
     ;;
 
   redis:restart)
-    dokku redis:stop
-    dokku redis:start
+    check_app; verify_app_name "$APP";
+    dokku redis:stop "$APP"
+    dokku redis:start "$APP"
     ;;
 
   redis:stop)
-    check_container
+    check_app; verify_app_name "$APP";
     dokku_log_info1 "Stopping redis server"
     docker stop "$REDIS_CONTAINER_NAME" > /dev/null
     ;;
 
   redis:dump)
-    check_container; check_app; verify_app_name "$APP"; check_exists
-    DATABASE=$(cat "$PSQL_ROOT/db_$APP")
-    PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
-    docker exec -i "$PSQL_CONTAINER_NAME" env PGPASSWORD="$PASSWORD" pg_dump -Fc --no-acl --no-owner -h localhost -U "$DATABASE" -w "$DATABASE"
+    check_app; verify_app_name "$APP"; check_exists
+    cat "$REDIS_ROOT/data/dump.rdb"
     ;;
 
   redis:restore)
-    check_container; check_app; verify_app_name "$APP"; check_exists
-    DATABASE=$(cat "$PSQL_ROOT/db_$APP")
-    PASSWORD=$(cat "$PSQL_ROOT/pass_$APP")
-    cat - | docker exec -i "$PSQL_CONTAINER_NAME" env PGPASSWORD="$PASSWORD" pg_restore -h localhost -cO -d "$DATABASE" -U "$DATABASE" -w
+    check_app; verify_app_name "$APP"; check_exists
+    cat - > "$REDIS_ROOT/data/dump.rdb"
+    dokku redis:restart "$APP"
     ;;
 
   redis:status)
