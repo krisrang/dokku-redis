@@ -3,7 +3,7 @@ set -eo pipefail; [[ $DOKKU_TRACE  ]] && set -x
 
 APP="$2"
 REDIS_ROOT="$DOKKU_ROOT/$APP/rediskr"
-REDIS_IMAGE="redis:9.3"
+REDIS_IMAGE="redis:3.0"
 REDIS_CONTAINER_NAME="dokku-rediskr-$APP"
 
 check_already_exists() {
@@ -32,7 +32,7 @@ load_ip_and_container() {
 
 db_url() {
   local APP="$1"
-  local PASSWORD=$(cat "$DOKKU_ROOT/pass")
+  local PASSWORD=$(cat "$REDIS_ROOT/pass")
   echo "redis://redis:${PASSWORD}@${PRIVATE_IP}:${PORT}/0"
 }
 
@@ -42,9 +42,9 @@ database_name() {
 
 env_for() {
   local APP="$1"
-  if [[ -f "$DOKKU_ROOT/pass" ]]; then
+  if [[ -f "$REDIS_ROOT/pass" ]]; then
     local URL=$(db_url "$APP")
-    local PASSWORD=$(cat "$DOKKU_ROOT/pass")
+    local PASSWORD=$(cat "$REDIS_ROOT/pass")
     echo "REDIS_URL=$URL REDIS_HOST=$PRIVATE_IP REDIS_PORT=$PORT REDIS_NAME=0 REDIS_PASS=$PASSWORD"
   fi
 }
