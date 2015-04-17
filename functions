@@ -32,10 +32,6 @@ db_url() {
   echo "redis://redis:${PASSWORD}@${PRIVATE_IP}:${PORT}/0"
 }
 
-database_name() {
-  echo "$1" | tr .- _
-}
-
 env_for() {
   local APP="$1"
   if [[ -f "$REDIS_ROOT/pass" ]]; then
@@ -43,17 +39,6 @@ env_for() {
     local PASSWORD=$(cat "$REDIS_ROOT/pass")
     echo "REDIS_URL=$URL REDIS_HOST=$PRIVATE_IP REDIS_PORT=$PORT REDIS_NAME=0 REDIS_PASS=$PASSWORD"
   fi
-}
-
-restart_apps() {
-  load_ip_and_container
-  for APP_NAME in $(DOKKU_QUIET_OUTPUT=true dokku apps); do
-    if [[ -f "$DOKKU_ROOT/$APP_NAME/rediskr/pass" ]]; then
-      set_env_for "$APP_NAME"
-      dokku_log_info2 "Restarting application: $APP_NAME"
-      dokku ps:restart "$APP_NAME"
-    fi
-  done
 }
 
 set_env_for() {

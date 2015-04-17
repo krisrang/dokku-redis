@@ -19,6 +19,7 @@ dokku plugins-install
 $ dokku help
     redis:console     <app>                          Launch a redis cli for <app>
     redis:create      <app>                          Create a redis database for <app>
+    redis:create      <app> --bind-port              Create a redis database for <app> with port binding for remote access
     redis:delete      <app>                          Delete redis database for <app>
     redis:dump        <app> > <filename.rdb>         Dump <app> database to rdb file
     redis:list                                       List all databases
