@@ -95,6 +95,16 @@ case "$1" in
     [[ -n "$REDIS_ID" ]] && redis_env_for "$APP" && exit 0
     ;;
     
+  redis:docker_args)
+    STDIN=$(cat)
+    if [[ -d "$REDIS_ROOT" ]]; then
+      env=$(dokku redis:env "$APP")
+      echo "$STDIN $env"
+    else
+      echo "$STDIN"
+    fi
+    ;;
+    
   redis:pre_build)
     if [[ -d "$REDIS_ROOT" ]]; then
       dokku redis:start-norestart "$APP" --quiet
