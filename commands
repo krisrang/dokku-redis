@@ -32,16 +32,16 @@ case "$1" in
     if [[ $3 == "--bind-port" ]]; then
       PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
       BIND="$PORT:6379"
+      echo $BIND > "$REDIS_ROOT/BIND"
       echo $PORT > "$REDIS_ROOT/PORT"
     else
       BIND="6379"
       echo "6379" > "$REDIS_ROOT/PORT"
+      echo "6379" > "$REDIS_ROOT/BIND"
     fi
     
     dokku_log_info1 "Creating database for $APP"
-    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf)
-    echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
-    echo $PRIVATE_IP > "$REDIS_ROOT/IP"
+    redis_start_container
     ;;
 
   redis:delete)
@@ -92,7 +92,7 @@ case "$1" in
     
   redis:env)
     verify_app_name "$APP"; redis_check_exists
-    [[ -n "$REDIS_ID" ]] && redis_env_for "$APP" && exit 0
+    [[ -n "$REDIS_ID" ]] && echo redis_env_for "$APP" && exit 0
     ;;
     
   redis:pre_build)
@@ -111,8 +111,7 @@ case "$1" in
         exit 0
     fi
     dokku_log_info1 "Starting redis server"
-    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf)
-    echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
+    redis_start_container
     ;;    
   
   redis:start)

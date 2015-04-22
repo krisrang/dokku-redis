@@ -24,6 +24,15 @@ redis_load_container_id() {
   fi
 }
 
+redis_start_container() {
+  BIND=$(cat "$REDIS_ROOT/BIND")
+  REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf)
+  PRIVATE_IP=$(docker inspect "$REDIS_ID" | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
+  echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
+  echo $PRIVATE_IP > "$REDIS_ROOT/IP"
+  echo $PORT > "$REDIS_ROOT/PORT"
+}
+
 redis_db_url() {
   local PASSWORD=$(cat "$REDIS_ROOT/PASS")
   echo "redis://redis:${PASSWORD}@${PRIVATE_IP}:${PORT}/0"
@@ -31,7 +40,7 @@ redis_db_url() {
 
 redis_env_for() {
   local APP="$1"
-  if [[ -f "$REDIS_ROOT/PASS" ]]; then
+  if [[ -f "$REDIS_ROOT/CONTAINERID" ]]; then
     local URL=$(redis_db_url "$APP")
     local PASSWORD=$(cat "$REDIS_ROOT/PASS")
     echo "-e REDIS_URL=$URL -e REDIS_HOST=$PRIVATE_IP -e REDIS_PORT=$PORT -e REDIS_DB=0 -e REDIS_NAME=0 -e REDIS_PASS=$PASSWORD"
