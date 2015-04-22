@@ -39,7 +39,7 @@ case "$1" in
     fi
     
     dokku_log_info1 "Creating database for $APP"
-    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null)
+    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf)
     echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
     echo $PRIVATE_IP > "$REDIS_ROOT/IP"
     ;;
@@ -47,8 +47,8 @@ case "$1" in
   redis:delete)
     verify_app_name "$APP"; redis_check_exists
     dokku_log_info1 "Deleting database for $APP"
-    docker stop "$REDIS_CONTAINER_NAME" > /dev/null
-    docker rm -f "$REDIS_CONTAINER_NAME" > /dev/null
+    docker stop "$REDIS_ID" > /dev/null
+    docker rm -f "$REDIS_ID" > /dev/null
     rm -fr "$REDIS_ROOT"
     ;;
 
@@ -68,9 +68,9 @@ case "$1" in
     ;;
 
   redis:stop)
-    verify_app_name "$APP";
+    verify_app_name "$APP"; redis_check_exists
     dokku_log_info1 "Stopping redis server"
-    docker stop "$REDIS_CONTAINER_NAME" > /dev/null
+    docker stop "$REDIS_ID" > /dev/null
     ;;
 
   redis:dump)
@@ -111,7 +111,7 @@ case "$1" in
         exit 0
     fi
     dokku_log_info1 "Starting redis server"
-    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null)
+    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf)
     echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
     ;;    
   
