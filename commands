@@ -92,7 +92,7 @@ case "$1" in
     
   redis:env)
     verify_app_name "$APP"; redis_check_exists
-    [[ -n "$REDIS_ID" ]] && echo redis_env_for "$APP" && exit 0
+    [[ -n "$REDIS_ID" ]] && redis_env_for "$APP" && exit 0
     ;;
     
   redis:pre_build)

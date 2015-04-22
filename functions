@@ -16,7 +16,7 @@ redis_check_exists() {
 redis_load_container_id() {
   if [[ -f "$REDIS_ROOT/CONTAINERID" ]]; then
     CNT_ID=$(cat "$REDIS_ROOT/CONTAINERID")
-    REDIS_ID=$(docker ps -f status=running | grep "$CNT_ID" | awk '{print $1}') || true
+    REDIS_ID=$(docker ps -f status=running --no-trunc | grep "$CNT_ID" | awk '{print $1}') || false
     if [[ -n "$REDIS_ID" ]]; then
       PRIVATE_IP=$(docker inspect "$REDIS_ID" | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
       PORT=$(cat "$REDIS_ROOT/PORT")
@@ -26,6 +26,7 @@ redis_load_container_id() {
 
 redis_start_container() {
   BIND=$(cat "$REDIS_ROOT/BIND")
+  PORT=$(cat "$REDIS_ROOT/PORT")
   REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf)
   PRIVATE_IP=$(docker inspect "$REDIS_ID" | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
   echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
