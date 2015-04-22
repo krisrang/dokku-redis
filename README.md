@@ -32,11 +32,12 @@ $ dokku help
 ```
 
 ## Info
-This plugin adds the following environment variables to your app automatically (they are available via `dokku config`):
+This plugin adds the following environment variables to your app via docker args (they are available via `dokku redis:url <app>`):
 
 * REDIS\_URL
 * REDIS\_HOST
 * REDIS\_NAME
+* REDIS\_DB
 * REDIS\_PASS
 * REDIS\_PORT
 
