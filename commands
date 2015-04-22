@@ -96,13 +96,14 @@ case "$1" in
     ;;
     
   redis:pre_build)
-    dokku redis:start-norestart
+    dokku redis:start-norestart "$APP" --quiet
+    sleep 2
     ;;
     
   redis:start-norestart)
     verify_app_name "$APP"; redis_check_exists
     if [[ -n "$REDIS_ID" ]]; then
-      echo "Redis container already running with ID: $REDIS_ID"
+      dokku_log_info1_quiet "Redis container already running with ID: $REDIS_ID"
       exit 0
     fi
     if [[ -n $CNT_ID ]]; then
