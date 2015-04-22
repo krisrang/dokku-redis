@@ -5,113 +5,122 @@ source "$(dirname $0)/functions"
 set +e
 
 if [[ $1 == redis:* ]]; then
-  load_ip_and_container
+  redis_load_container_id
 fi
 
 case "$1" in
   redis:console)
-    check_app; verify_app_name "$APP"; check_exists
-    PASSWORD=$(cat "$REDIS_ROOT/pass")
-    docker exec -it "$REDIS_CONTAINER_NAME" env TERM="$TERM" redis-cli -a "$PASSWORD"
+    verify_app_name "$APP"; redis_check_exists
+    PASSWORD=$(cat "$REDIS_ROOT/PASS")
+    interactive_docker_exec "$REDIS_ID" env TERM="$TERM" redis-cli -a "$PASSWORD"
     ;;
 
   redis:url)
-    check_app; verify_app_name "$APP"; check_exists
-    db_url "$APP"
+    verify_app_name "$APP"; redis_check_exists
+    redis_db_url "$APP"
     ;;
 
   redis:create)
-    check_app; verify_app_name "$APP"; check_already_exists    
+    verify_app_name "$APP"; redis_check_already_exists    
     PASSWORD=$(openssl rand -hex 32)    
     mkdir -p "$REDIS_ROOT/data"
-    echo $PASSWORD > "$REDIS_ROOT/pass"
-    chmod 600 "$REDIS_ROOT/pass"
+    echo $PASSWORD > "$REDIS_ROOT/PASS"
+    chmod 600 "$REDIS_ROOT/PASS"
     cp "$(dirname $0)/redis.conf" "$REDIS_ROOT/redis.conf"
     sed -i.bak s/redispasshere/$PASSWORD/g "$REDIS_ROOT/redis.conf"
     
     if [[ $3 == "--bind-port" ]]; then
       PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
       BIND="$PORT:6379"
-      echo $PORT > "$REDIS_ROOT/port"
+      echo $PORT > "$REDIS_ROOT/PORT"
     else
       BIND="6379"
-      echo "6379" > "$REDIS_ROOT/port"
+      echo "6379" > "$REDIS_ROOT/PORT"
     fi
     
     dokku_log_info1 "Creating database for $APP"
-    docker run -d --name "$REDIS_CONTAINER_NAME" -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null
-    set_env_for "$APP"
-    echo $PRIVATE_IP > "$REDIS_ROOT/ip"
+    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null)
+    echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
+    echo $PRIVATE_IP > "$REDIS_ROOT/IP"
     ;;
 
   redis:delete)
-    check_app; verify_app_name "$APP"; check_exists
+    verify_app_name "$APP"; redis_check_exists
     dokku_log_info1 "Deleting database for $APP"
     docker stop "$REDIS_CONTAINER_NAME" > /dev/null
     docker rm -f "$REDIS_CONTAINER_NAME" > /dev/null
     rm -fr "$REDIS_ROOT"
-    if [[ -d "$DOKKU_ROOT/$APP" ]]; then
-      dokku_log_info1 "Unsetting config vars for $APP"
-      dokku config:unset-norestart "$APP" REDIS_URL REDIS_HOST REDIS_PORT REDIS_NAME REDIS_PASS &> /dev/null
-    fi
     ;;
 
   redis:list)
     dokku_col_log_info2_quiet "App Name" "Container id"
-    for APP_NAME in $(DOKKU_QUIET_OUTPUT=true dokku apps); do
-      if [[ -f "$DOKKU_ROOT/$APP_NAME/rediskr/pass" ]]; then
-        DOCKER_ID=$(docker ps | grep dokku-rediskr-$APP_NAME | awk '{print $1}')
-        dokku_col_log_msg "$APP_NAME" "$DOCKER_ID"
+    for APP_NAME in $(dokku apps --quiet); do
+      if [[ -f "$DOKKU_ROOT/$APP_NAME/rediskr/CONTAINERID" ]]; then
+        CNT_ID=$(cat "$DOKKU_ROOT/$APP_NAME/rediskr/CONTAINERID")
+        dokku_col_log_msg "$APP_NAME" "$CNT_ID"
       fi
     done
     ;;
-
-  redis:start)
-    check_app; verify_app_name "$APP"; check_exists
-    if [[ -n "$REDIS_ID" ]]; then
-      echo "Redis container already running with ID: $REDIS_ID"
-      exit 1
-    fi
-    OLD_ID=$(docker ps -f status=exited | grep "$REDIS_CONTAINER_NAME" | awk '{print $1}')
-    if [[ -n $OLD_ID ]]; then
-        OLD_ID=$(docker start $OLD_ID)
-        dokku_log_info1 "Starting existing redis container $OLD_ID"
-        exit 0
-    fi
-    dokku_log_info1 "Starting redis server"
-    docker run -d --name "$REDIS_CONTAINER_NAME" -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null
-    set_env_for "$APP"
-    dokku_log_info2 "Restarting application: $APP"
-    dokku ps:restart "$APP"
-    ;;
-
+    
   redis:restart)
     dokku redis:stop "$APP"
     dokku redis:start "$APP"
     ;;
 
   redis:stop)
-    check_app; verify_app_name "$APP";
+    verify_app_name "$APP";
     dokku_log_info1 "Stopping redis server"
     docker stop "$REDIS_CONTAINER_NAME" > /dev/null
     ;;
 
   redis:dump)
-    check_app; verify_app_name "$APP"; check_exists
+    verify_app_name "$APP"; redis_check_exists
     cat "$REDIS_ROOT/data/dump.rdb"
     ;;
 
   redis:restore)
-    check_app; verify_app_name "$APP"; check_exists
+    verify_app_name "$APP"; redis_check_exists
     cat - > "$REDIS_ROOT/data/dump.rdb"
     dokku redis:restart "$APP"
     ;;
 
   redis:status)
-    check_app; verify_app_name "$APP"; check_exists
+    verify_app_name "$APP"; redis_check_exists
     [[ -n "$REDIS_ID" ]] && echo "Redis container running with ID: $REDIS_ID" && exit 0
     echo "Redis container not running"
+    ;;  
+    
+  redis:env)
+    verify_app_name "$APP"; redis_check_exists
+    [[ -n "$REDIS_ID" ]] && redis_env_for "$APP" && exit 0
     ;;
+    
+  redis:pre_build)
+    dokku redis:start-norestart
+    ;;
+    
+  redis:start-norestart)
+    verify_app_name "$APP"; redis_check_exists
+    if [[ -n "$REDIS_ID" ]]; then
+      echo "Redis container already running with ID: $REDIS_ID"
+      exit 0
+    fi
+    if [[ -n $CNT_ID ]]; then
+        CNT_ID=$(docker start $CNT_ID)
+        dokku_log_info1 "Starting existing redis container $CNT_ID"
+        exit 0
+    fi
+    dokku_log_info1 "Starting redis server"
+    REDIS_ID=$(docker run -d -p $BIND -v $REDIS_ROOT/data:/data -v $REDIS_ROOT/redis.conf:/etc/redis/redis.conf "$REDIS_IMAGE" redis-server /etc/redis/redis.conf > /dev/null)
+    echo $REDIS_ID > "$REDIS_ROOT/CONTAINERID"
+    ;;    
+  
+  redis:start)
+    dokku redis:start-norestart
+    dokku_log_info2 "Restarting application: $APP"
+    dokku ps:restart "$APP"
+    ;;
+
 
   help)
     cat && cat<<EOF

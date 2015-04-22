@@ -4,46 +4,39 @@ set -eo pipefail; [[ $DOKKU_TRACE  ]] && set -x
 APP="$2"
 REDIS_ROOT="$DOKKU_ROOT/$APP/rediskr"
 REDIS_IMAGE="redis:3.0"
-REDIS_CONTAINER_NAME="dokku-rediskr-$APP"
 
-check_already_exists() {
+redis_check_already_exists() {
   [[ -d "$REDIS_ROOT" ]] && echo "Database for $APP already exists" && exit 1
 }
 
-check_exists() {
+redis_check_exists() {
   [[ ! -d "$REDIS_ROOT" ]] && echo "No database configured for $APP" && exit 1
 }
 
-check_app() {
-  [[ -z "$APP" ]] && echo "Please specify an app to run the command on" && exit 1
-}
-
-load_ip_and_container() {
-  REDIS_ID=$(docker ps -f status=running | grep "$REDIS_CONTAINER_NAME" | awk '{print $1}') || true
+redis_load_container_id() {
+  CNT_ID=$(cat "$REDIS_ROOT/CONTAINERID")
+  REDIS_ID=$(docker ps -f status=running | grep "$CNT_ID" | awk '{print $1}') || true
   if [[ -n "$REDIS_ID" ]]; then
     PRIVATE_IP=$(docker inspect "$REDIS_ID" | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
-    PORT=$(cat "$REDIS_ROOT/port")
+    PORT=$(cat "$REDIS_ROOT/PORT")
   fi
 }
 
-db_url() {
-  local APP="$1"
-  local PASSWORD=$(cat "$REDIS_ROOT/pass")
+redis_db_url() {
+  local PASSWORD=$(cat "$REDIS_ROOT/PASS")
   echo "redis://redis:${PASSWORD}@${PRIVATE_IP}:${PORT}/0"
 }
 
-env_for() {
+redis_env_for() {
   local APP="$1"
-  if [[ -f "$REDIS_ROOT/pass" ]]; then
-    local URL=$(db_url "$APP")
-    local PASSWORD=$(cat "$REDIS_ROOT/pass")
-    echo "REDIS_URL=$URL REDIS_HOST=$PRIVATE_IP REDIS_PORT=$PORT REDIS_NAME=0 REDIS_PASS=$PASSWORD"
+  if [[ -f "$REDIS_ROOT/PASS" ]]; then
+    local URL=$(redis_db_url "$APP")
+    local PASSWORD=$(cat "$REDIS_ROOT/PASS")
+    echo "-e REDIS_URL=$URL -e REDIS_HOST=$PRIVATE_IP -e REDIS_PORT=$PORT -e REDIS_DB=0 -e REDIS_NAME=0 -e REDIS_PASS=$PASSWORD"
   fi
 }
 
-set_env_for() {
-  load_ip_and_container
-  local APP="$1"
-  dokku_log_info1 "Setting config vars for $APP"
-  dokku config:set-norestart "$APP" $(env_for "$APP") &> /dev/null
+interactive_docker_exec() {
+  local TTY_OPT=$([[ -t 0 ]] && echo "--tty")
+  docker exec --interactive $TTY_OPT "$@"
 }
