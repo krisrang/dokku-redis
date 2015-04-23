@@ -11,7 +11,7 @@ dokku="PATH=$PATH DOKKU_ROOT=$DOKKU_ROOT PLUGIN_PATH=$PLUGIN_PATH commands"
 
 setup() {
   if [[ ! -d $PLUGIN_PATH ]]; then
-    git clone git@github.com:progrium/dokku.git test/dokku
+    git clone https://github.com/progrium/dokku.git test/dokku
   fi
 }
 

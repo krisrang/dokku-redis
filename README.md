@@ -1,4 +1,5 @@
-# dokku-redis
+dokku-redis [![Build Status](https://travis-ci.org/krisrang/dokku-redis.svg?branch=master)](https://travis-ci.org/krisrang/dokku-redis)
+================
 
 dokku-redis is a plugin for [dokku][dokku] that provides redis servers for your applications.
 
