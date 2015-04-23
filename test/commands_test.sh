@@ -1,5 +1,6 @@
 #!/bin/bash
 
+DEBUG=1
 . test/assert.sh
 
 STUBS=test/stubs
