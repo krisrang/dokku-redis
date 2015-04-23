@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+case "$1" in
+  run)
+    echo "testid"
+    ;;
+  inspect)
+    cat<<EOF
+    "IPAddress": "172.17.0.34",
+EOF
+    ;;
+esac

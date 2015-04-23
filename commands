@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
-source "$(dirname $0)/../common/functions"
+source "$PLUGIN_PATH/common/functions"
 source "$(dirname $0)/functions"
 set +e
 
@@ -21,14 +21,14 @@ case "$1" in
     ;;
 
   redis:create)
-    verify_app_name "$APP"; redis_check_already_exists    
-    PASSWORD=$(openssl rand -hex 32)    
+    verify_app_name "$APP"; redis_check_already_exists
+    PASSWORD=$(openssl rand -hex 32)
     mkdir -p "$REDIS_ROOT/data"
     echo $PASSWORD > "$REDIS_ROOT/PASS"
     chmod 600 "$REDIS_ROOT/PASS"
     cp "$(dirname $0)/redis.conf" "$REDIS_ROOT/redis.conf"
     sed -i.bak s/redispasshere/$PASSWORD/g "$REDIS_ROOT/redis.conf"
-    
+
     if [[ $3 == "--bind-port" ]]; then
       PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
       BIND="$PORT:6379"
@@ -39,7 +39,7 @@ case "$1" in
       echo "6379" > "$REDIS_ROOT/PORT"
       echo "6379" > "$REDIS_ROOT/BIND"
     fi
-    
+
     dokku_log_info1 "Creating database for $APP"
     redis_start_container
     ;;
@@ -61,7 +61,7 @@ case "$1" in
       fi
     done
     ;;
-    
+
   redis:restart)
     dokku redis:stop "$APP"
     dokku redis:start "$APP"
@@ -88,13 +88,13 @@ case "$1" in
     verify_app_name "$APP"; redis_check_exists
     [[ -n "$REDIS_ID" ]] && echo "Redis container running with ID: $REDIS_ID" && exit 0
     echo "Redis container not running"
-    ;;  
-    
+    ;;
+
   redis:env)
     verify_app_name "$APP"; redis_check_exists
     [[ -n "$REDIS_ID" ]] && redis_env_for "$APP" && exit 0
     ;;
-    
+
   redis:docker_args)
     STDIN=$(cat)
     if [[ -d "$REDIS_ROOT" ]]; then
@@ -104,14 +104,14 @@ case "$1" in
       echo "$STDIN"
     fi
     ;;
-    
+
   redis:pre_build)
     if [[ -d "$REDIS_ROOT" ]]; then
       dokku redis:start-norestart "$APP" --quiet
       sleep 2
     fi
     ;;
-    
+
   redis:start-norestart)
     verify_app_name "$APP"; redis_check_exists
     if [[ -n "$REDIS_ID" ]]; then
@@ -125,8 +125,8 @@ case "$1" in
     fi
     dokku_log_info1 "Starting redis server"
     redis_start_container
-    ;;    
-  
+    ;;
+
   redis:start)
     dokku redis:start-norestart
     dokku_log_info2 "Restarting application: $APP"
