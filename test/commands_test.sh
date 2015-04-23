@@ -5,6 +5,7 @@ DEBUG=1
 
 STUBS=test/stubs
 PATH="$STUBS:./:$PATH"
+DOKKU_VERSION=${DOKKU_VERSION:-"v0.3.17"}
 DOKKU_ROOT="test/fixtures/dokku"
 PLUGIN_PATH="test/dokku/plugins"
 REDIS_ROOT="$DOKKU_ROOT/testapp/rediskr"
@@ -12,8 +13,13 @@ dokku="PATH=$PATH DOKKU_ROOT=$DOKKU_ROOT PLUGIN_PATH=$PLUGIN_PATH commands"
 
 setup() {
   if [[ ! -d $PLUGIN_PATH ]]; then
-    git clone https://github.com/progrium/dokku.git test/dokku
+    git clone https://github.com/progrium/dokku.git test/dokku > /dev/null
   fi
+
+  cd test/dokku
+  echo "Dokku version $DOKKU_VERSION"
+  git checkout $DOKKU_VERSION > /dev/null
+  cd -
 }
 
 assert_db_exists() {

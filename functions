@@ -5,6 +5,15 @@ APP="$2"
 REDIS_ROOT="$DOKKU_ROOT/$APP/rediskr"
 REDIS_IMAGE="redis:3.0"
 
+# remove with dokku 0.3.18
+verify_app_name() {
+  local APP="$1"
+  [[ ! -n "$APP" ]] && dokku_log_fail "(verify_app_name) APP must not be null"
+  [[ ! -d "$DOKKU_ROOT/$APP" ]] && dokku_log_fail "App $APP does not exist"
+  IMAGE="dokku/$APP"
+  return 0
+}
+
 redis_check_already_exists() {
   [[ -d "$REDIS_ROOT" ]] && echo "Database for $APP already exists" && exit 1
 }

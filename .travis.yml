@@ -1,2 +1,5 @@
 language: bash
+env:
+  - DOKKU_VERSION=v0.3.17
+  - DOKKU_VERSION=master
 script: make test
