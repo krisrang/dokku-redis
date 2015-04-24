@@ -4,6 +4,12 @@ case "$1" in
   run)
     echo "testid"
     ;;
+  ps)
+    echo "testid redis:3.0 \"/entrypoint.sh redi 2 days ago Up 47 hours 0.0.0.0:32768->6379/tcp sick_goodall"
+    ;;
+  exec)
+    echo "exec called with $@"
+    ;;
   inspect)
     cat<<EOF
     "IPAddress": "172.17.0.34",

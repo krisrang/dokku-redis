@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
 
 echo "[stub: dokku $@]"
-commands $@
+case "$1" in
+  apps)
+    echo "testapp"
+    ;;
+  *)
+    commands $@
+    ;;
+esac
