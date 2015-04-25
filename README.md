@@ -18,18 +18,18 @@ dokku plugins-install
 ## Commands
 ```
 $ dokku help
-    redis:console     <app>                          Launch a redis cli for <app>
-    redis:create      <app>                          Create a redis database for <app>
-    redis:create      <app> --bind-port              Create a redis database for <app> with port binding for remote access
-    redis:delete      <app>                          Delete redis database for <app>
-    redis:dump        <app> > <filename.rdb>         Dump <app> database to rdb file
-    redis:list                                       List all databases
-    redis:restart     <app>                          Restart the redis docker container for <app>
-    redis:restore     <app> < <filename.rdb>         Restore database to <app> from rdb file
-    redis:start       <app>                          Start the redis docker container if it isn't running for <app>
-    redis:status      <app>                          Shows status of redis for <app>
-    redis:stop        <app>                          Stop the redis docker container for <app>
-    redis:url         <app>                          Get REDIS_URL for <app>
+    redis:console     <app>                         Launch a redis cli for <app>
+    redis:create      <app>                         Create a redis database for <app>
+    redis:create      <app> --bind-port             Create a redis database for <app> with port binding for remote access
+    redis:delete      <app>                         Delete redis database for <app>
+    redis:dump        <app> > <filename.rdb>        Dump <app> database to rdb file
+    redis:list                                      List all databases
+    redis:restart     <app>                         Restart the redis docker container for <app>
+    redis:restore     <app> < <filename.rdb>        Restore database to <app> from rdb file
+    redis:start       <app>                         Start the redis docker container if it isn't running for <app>
+    redis:status      <app>                         Shows status of redis for <app>
+    redis:stop        <app>                         Stop the redis docker container for <app>
+    redis:url         <app>                         Get REDIS_URL for <app>
 ```
 
 ## Info
