@@ -45,7 +45,7 @@ case "$1" in
     ;;
 
   redis:delete)
-    verify_app_var "$APP";
+    verify_app_name "$APP"; redis_check_exists
     dokku_log_info1 "Deleting database for $APP"
     docker stop "$REDIS_ID" > /dev/null
     docker rm -f "$REDIS_ID" > /dev/null
