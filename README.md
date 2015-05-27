@@ -5,7 +5,7 @@ dokku-redis is a plugin for [dokku][dokku] that provides redis servers for your 
 
 It uses the official Redis docker image (version 3.0).
 
-This version is tested against dokku 0.3.17.
+This version is tested against dokku 0.3.18.
 
 ## Installation
 
